@@ -1,0 +1,12 @@
+BIOIN 401 Log
+
+Jan. 16
+- downloaded a bunch of things
+- found papers into digital avatar creation and RAG modified LLMs 
+- made account in huggingface to gain access to a bunch of models
+- watched Salvador dali's AI avatar video 
+
+TO DO:
+- make a GANTT chart 
+- email helper
+- figure out a pipeline
