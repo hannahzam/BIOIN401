@@ -17,6 +17,10 @@ import os
 
 from langchain_groq import ChatGroq
 
+from pyht import Client
+from dotenv import load_dotenv
+from pyht.client import TTSOptions
+
 #from transformers import GPT2Tokenizer, TrainingArguments, Trainer
 #from datasets import load_dataset
 
@@ -24,10 +28,30 @@ from TTS.api import TTS
 
 
 if "GROQ_API_KEY" not in os.environ:
-    os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
+     os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
+if "PLAY_HT_USER_ID" not in os.environ:
+     os.environ["PLAY_HT_USER_ID"] = getpass.getpass("Enter your PlayHT User ID: ")
+if "PLAY_HT_API_KEY" not in os.environ:
+     os.environ["PLAY_HT_API_KEY"] = getpass.getpass("Enter your PlayHT API Key: ")
 
 
 def speak(talk):
+     load_dotenv()
+
+     client = Client(
+          user_id=os.getenv("PLAY_HT_USER_ID"),
+          api_key=os.getenv("PLAY_HT_API_KEY"),
+     )
+     options = TTSOptions(voice="s3://voice-cloning-zero-shot/a1feef9e-6753-4d9a-b16a-f2814af26a87/original/manifest.json")
+     # Open a file to save the audio
+     with open("output.wav", "wb") as audio_file:
+          for chunk in client.tts(talk, options,  voice_engine='Play3.0-mini', protocol='http'):
+          # Write the audio chunk to the file
+               audio_file.write(chunk)
+
+     client.close()
+
+     '''
      device = "cuda" if torch.cuda.is_available() else "cpu"
      tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
      # generate speech by cloning a voice using default settings
@@ -35,6 +59,7 @@ def speak(talk):
                      file_path="output3.wav",
                      speaker_wav=r"Audio_250205024815.wav",
                      language="en")
+     '''
 
 
 def create_vector_store(data_dir):
@@ -74,7 +99,7 @@ def load_llm():
      '''
 
      llm = ChatGroq(
-          model="mixtral-8x7b-32768",
+          model="llama-3.3-70b-versatile",
           temperature=0,
           max_tokens=None,
           timeout=None,
@@ -117,9 +142,9 @@ def create_prompt_template():
     # prepare the template we will use when prompting the AI
     template = """You are to respond to user questions as if you are Frederick Sanger, British biochemist who won two Nobel prizes for 
     Chemistry, specifically DNA sequencing and the peptide sequence of insulin.
-    You are given a question from the user and using the relevant context, provide a answer to the question, as if you are having a conversation.
-    If you don't know the answer or the user does not provide a question, just say "Hmm, I'm not sure." Do not try to make up a question or an answer, 
-    do not repeat yourself and do not completely copy the context.
+    You are given a question from the user and using the relevant context, provide a conversational answer to the question.
+    If you don't know the answer or the user does not provide a question, just say "Hmm, I'm not sure." Do not try to make up a question or an answer
+    and do not repeat yourself within your answer. Do not include unnecessary symbols or a header to your answer. Just respond to the question.
 
     Question: {question}
     =========
