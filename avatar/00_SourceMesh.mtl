@@ -1,0 +1,7 @@
+newmtl temp_material
+    Ns 25.000000
+    d 1.000000
+    Ka 0.050876 0.050876 0.050876
+    Kd 0.800000 0.800000 0.800000
+    Ks 0.800000 0.800000 0.800000
+    map_Kd 00_SourceMesh/temp_material_diffuse.png
