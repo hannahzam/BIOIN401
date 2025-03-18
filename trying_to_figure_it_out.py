@@ -26,6 +26,10 @@ from pyht.client import TTSOptions
 
 from TTS.api import TTS
 
+import importlib
+import requests
+import time
+
 
 if "GROQ_API_KEY" not in os.environ:
      os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
@@ -33,7 +37,8 @@ if "PLAY_HT_USER_ID" not in os.environ:
      os.environ["PLAY_HT_USER_ID"] = getpass.getpass("Enter your PlayHT User ID: ")
 if "PLAY_HT_API_KEY" not in os.environ:
      os.environ["PLAY_HT_API_KEY"] = getpass.getpass("Enter your PlayHT API Key: ")
-
+if "TAVUS_API_KEY" not in os.environ:
+     os.environ["TAVUS_API_KEY"] = getpass.getpass("Enter your Tavus API Key: ")
 
 def speak(talk):
      load_dotenv()
@@ -44,7 +49,7 @@ def speak(talk):
      )
      options = TTSOptions(voice="s3://voice-cloning-zero-shot/a1feef9e-6753-4d9a-b16a-f2814af26a87/original/manifest.json")
      # Open a file to save the audio
-     with open("output.wav", "wb") as audio_file:
+     with open("output3.wav", "wb") as audio_file:
           for chunk in client.tts(talk, options,  voice_engine='Play3.0-mini', protocol='http'):
           # Write the audio chunk to the file
                audio_file.write(chunk)
@@ -61,7 +66,25 @@ def speak(talk):
                      language="en")
      '''
 
-
+# Generate video from Tavus API
+def generate_avatar_video(audio):
+    tavus_api = os.getenv("TAVUS_API_KEY")
+    try:
+        url = "https://tavusapi.com/v2/videos"
+        payload = {"replica_id": "rb17cf590e15", "script": audio}
+        headers = {"x-api-key": tavus_api, "Content-Type": "application/json"}
+        response = requests.post(url, json=payload, headers=headers)
+        response_data = response.json()
+        if response_data.get("status") != "queued":
+            print("Failed to queue video generation.")
+            return None, None
+        video_id = response_data.get("video_id")
+        video_check_url = f"https://tavusapi.com/v2/videos/{video_id}"
+        return video_id, video_check_url
+    except Exception as e:
+        print(f"Error generating avatar video: {e}")
+        return None, None
+    
 def create_vector_store(data_dir):
     '''Create a vector store from PDF files'''
     # define what documents to load
@@ -176,6 +199,8 @@ def main():
      )
      answer = chain.invoke(prompt)
      print(': ', answer, '\n')
-     speak(answer)
+     # speak(answer)
+     video_id, video_url = generate_avatar_video(answer)
+     print(video_url)
 
 main()
