@@ -29,17 +29,22 @@ from TTS.api import TTS
 import importlib
 import requests
 import time
+import shutil
+import gradio as gr
 
 
 if "GROQ_API_KEY" not in os.environ:
      os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
-if "PLAY_HT_USER_ID" not in os.environ:
-     os.environ["PLAY_HT_USER_ID"] = getpass.getpass("Enter your PlayHT User ID: ")
-if "PLAY_HT_API_KEY" not in os.environ:
-     os.environ["PLAY_HT_API_KEY"] = getpass.getpass("Enter your PlayHT API Key: ")
+#if "PLAY_HT_USER_ID" not in os.environ:
+#     os.environ["PLAY_HT_USER_ID"] = getpass.getpass("Enter your PlayHT User ID: ")
+#if "PLAY_HT_API_KEY" not in os.environ:
+#     os.environ["PLAY_HT_API_KEY"] = getpass.getpass("Enter your PlayHT API Key: ")
 if "TAVUS_API_KEY" not in os.environ:
      os.environ["TAVUS_API_KEY"] = getpass.getpass("Enter your Tavus API Key: ")
+if "SYNC_API_KEY" not in os.environ:
+     os.environ["SYNC_API_KEY"] = getpass.getpass("Enter your Sync API Key: ")
 
+# TTS from PlayHT
 def speak(talk):
      load_dotenv()
 
@@ -67,11 +72,11 @@ def speak(talk):
      '''
 
 # Generate video from Tavus API
-def generate_avatar_video(audio):
+def generate_avatar_video(text):
     tavus_api = os.getenv("TAVUS_API_KEY")
     try:
         url = "https://tavusapi.com/v2/videos"
-        payload = {"replica_id": "rb17cf590e15", "script": audio}
+        payload = {"replica_id": "rb17cf590e15", "script": text}
         headers = {"x-api-key": tavus_api, "Content-Type": "application/json"}
         response = requests.post(url, json=payload, headers=headers)
         response_data = response.json()
@@ -84,6 +89,77 @@ def generate_avatar_video(audio):
     except Exception as e:
         print(f"Error generating avatar video: {e}")
         return None, None
+    
+# generate lip-sync video from Sync.so
+def generate_lip_sync(answer):
+     sync_api = os.getenv("SYNC_API_KEY")
+     try:
+          url = "https://api.sync.so/v2/generate"
+
+          payload = {
+               "model": "lipsync-1.9.0-beta",
+               "input": [
+                    {
+                         "type": "video",
+                         "url": "https://synchlabs-public.s3.us-west-2.amazonaws.com/david_demo_shortvid-03a10044-7741-4cfc-816a-5bccd392d1ee.mp4"
+                    },
+                    {
+                         "type": "audio",
+                         "url": "https://synchlabs-public.s3.us-west-2.amazonaws.com/david_demo_shortaud-27623a4f-edab-4c6a-8383-871b18961a4a.wav"
+                    }
+               ],
+               "options": {
+                    "pads": [0, 5, 0, 0],
+                    "speedup": 1,
+                    "output_format": "mp4",
+                    "sync_mode": "bounce",
+                    "fps": 25,
+                    "output_resolution": [1280, 720],
+                    "active_speaker": True
+               },
+               
+          }
+          headers = {
+               "x-api-key": sync_api,
+               "Content-Type": "application/json"
+          }
+
+          response = requests.request("POST", url, json=payload, headers=headers)
+          response_data = response.json()
+
+          # status handling
+          if response_data.get("status") == "FAILED": 
+               print("Video generation failed.")
+          elif response_data.get("status") == "REJECTED":
+               print("Video generation rejected.")
+          elif response_data.get("status") == "CANCELED":
+               print("Video generation cancelled.")
+          elif response_data.get("status") == "REJECTED":
+               print("Video generation rejected.")
+
+          video_url = response_data.get("outputUrl")
+          print(video_url)
+
+          while not video_url:   
+               # wait for video
+               time.sleep(5)
+          
+          save_video(video_url)
+
+     except Exception as e:
+          print(f"Error generating avatar video: {e}")
+
+
+     return video_url
+
+
+def save_video(url):
+     response = requests.get(url, stream=True)
+     response.raise_for_status() # was download successful?
+     with open("answer.mp4", 'wb') as out_file:
+        shutil.copyfileobj(response.raw, out_file)
+     del response
+
     
 def create_vector_store(data_dir):
     '''Create a vector store from PDF files'''
@@ -100,26 +176,8 @@ def create_vector_store(data_dir):
     db = FAISS.from_documents(texts, embeddings)
     return db
 
-#def tokenize_function(examples):
-#     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-#     tokenizer.pad_token = tokenizer.eos_token
-#     return tokenizer(examples["Answer"], padding="max_length", truncation=True)
 
 def load_llm():
-     '''
-     # trying to train the llm
-     t_dataset = load_dataset("csv", data_files="training_set.csv")
-     e_dataset = load_dataset("csv", data_files="eval_set.csv")
-     training_dataset = t_dataset.map(tokenize_function, batched=True)
-     evalu_dataset = e_dataset.map(tokenize_function, batched=True)
-
-     training_args = TrainingArguments(
-          output_dir="test_trainer", 
-          per_device_eval_batch_size=1,
-          per_device_train_batch_size=1,
-          gradient_accumulation_steps=4
-     )
-     '''
 
      llm = ChatGroq(
           model="llama-3.3-70b-versatile",
@@ -128,36 +186,6 @@ def load_llm():
           timeout=None,
           max_retries=2
      )
-
-     #llm.train(training_dataset, **training_args) 
-
-     #trainer = Trainer(
-     #     model=llm,
-     #     args=training_args,
-     #     train_dataset=training_dataset,
-     #     eval_dataset=evalu_dataset
-     #)
-     #trainer.train()
-
-     """
-     model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-1B-Instruct", low_cpu_mem_usage = True)
-     tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B-Instruct", padding=True, truncation=True, max_length=512, low_cpu_mem_usage = True)
-     
-
-     pipe = pipeline(
-          task="text-generation", 
-          model=model, 
-          tokenizer=tokenizer,
-          pad_token_id=tokenizer.eos_token_id, 
-          do_sample=True,
-          return_full_text=False,
-     )
-
-     llm = HuggingFacePipeline(
-          pipeline=pipe,
-          model_kwargs={"temperature": 0.1, "max_length": 512, "max_new_tokens": 500},
-     )
-     """
      return llm
 
 
@@ -178,17 +206,19 @@ def create_prompt_template():
     
     return prompt_template
 
-def main():
+def main_conversation(question):
      db = create_vector_store(data_dir='Fred Sanger Data collection')
      llm = load_llm()
      prompt_template = create_prompt_template()
      retriever = db.as_retriever(search_type="similarity", search_kwargs={'k': 4})
+     '''
      #while True: 
      print("Ask a question? or press enter to end conversation")
      question = input()
           #if not question:
           #     print("Hope to talk to you again sometime.")
           #     break
+     '''
      relevant_docs = retriever.invoke(question)
      context = "\nExtracted documents:\n"
      context += "".join([f"Document {str(i)}:::\n" + str(doc) for i, doc in enumerate(relevant_docs)])
@@ -198,9 +228,49 @@ def main():
      | StrOutputParser()
      )
      answer = chain.invoke(prompt)
-     print(': ', answer, '\n')
-     # speak(answer)
-     video_id, video_url = generate_avatar_video(answer)
-     print(video_url)
+     # print(': ', answer, '\n')
 
-main()
+     # have idle video running 
+     yield answer, gr.update(value="https://drive.google.com/file/d/1let6bXm9EvBJUbHtnMahTvk-KLtSZRMf/view?usp=sharing", autoplay = True)
+
+     # Generate avatar video
+     video_id, video_check_url = generate_avatar_video(answer)
+     if not video_id:
+        return answer, gr.update(value=None, label="Error generating video.")
+
+    # Initial response with loading message
+     loading_message = gr.update(value="Video is being generated, please wait...", visible=True)
+     yield answer, loading_message
+
+     tavus_api = os.getenv("TAVUS_API_KEY")
+    # Poll for video status every 5 seconds
+     while True:
+        time.sleep(5)
+        headers = {"x-api-key": tavus_api}
+        status_response = requests.get(video_check_url, headers=headers).json()
+        print(status_response)
+
+        if status_response.get("status") == "ready":
+            download_url = status_response.get("download_url")
+            mp4_download_url = download_url + ".mp4"  # Ensure .mp4 extension
+
+            # Update the video component with the download URL
+            yield answer, gr.update(value=mp4_download_url, visible=True)
+            return  # Exit once the video is ready and displayed
+
+        print("Video generation in progress...")
+
+# Define Gradio interface
+with gr.Interface(
+    fn=main_conversation,
+    inputs=[
+        gr.Textbox(label="Your Input", placeholder="Type your message here..."),
+    ],
+    outputs=[
+        gr.Textbox(label="Chatbot Response"),
+        gr.Video(label="Avatar Video", autoplay=True)
+    ],
+    title="System Context Conversation Bot with Speaking Avatar",
+    description="Interact with the chatbot, and receive a lifelike video response."
+) as demo:
+     demo.launch(share=True, debug=True)
