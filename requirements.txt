@@ -8,3 +8,4 @@ datasets
 pypdf
 coqui-tts
 faiss-cpu
+nicegui

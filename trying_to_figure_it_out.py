@@ -3,34 +3,33 @@ from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from transformers import AutoTokenizer, pipeline
-from langchain_huggingface import HuggingFacePipeline
-from langchain.chains import RetrievalQA
+#from transformers import AutoTokenizer, pipeline
+#from langchain_huggingface import HuggingFacePipeline
+#from langchain.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
-from transformers import AutoModelForQuestionAnswering, AutoModelForCausalLM
+#from transformers import AutoModelForQuestionAnswering, AutoModelForCausalLM
 
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+#from langchain_core.runnables import RunnablePassthrough
 
 import getpass
 import os
 
 from langchain_groq import ChatGroq
 
-from pyht import Client
-from dotenv import load_dotenv
-from pyht.client import TTSOptions
+#from pyht import Client
+#from dotenv import load_dotenv
+#from pyht.client import TTSOptions
 
 #from transformers import GPT2Tokenizer, TrainingArguments, Trainer
 #from datasets import load_dataset
 
 from TTS.api import TTS
 
-import importlib
+#import importlib
 import requests
 import time
 import shutil
-import gradio as gr
 
 
 if "GROQ_API_KEY" not in os.environ:
@@ -39,13 +38,14 @@ if "GROQ_API_KEY" not in os.environ:
 #     os.environ["PLAY_HT_USER_ID"] = getpass.getpass("Enter your PlayHT User ID: ")
 #if "PLAY_HT_API_KEY" not in os.environ:
 #     os.environ["PLAY_HT_API_KEY"] = getpass.getpass("Enter your PlayHT API Key: ")
-if "TAVUS_API_KEY" not in os.environ:
-     os.environ["TAVUS_API_KEY"] = getpass.getpass("Enter your Tavus API Key: ")
-if "SYNC_API_KEY" not in os.environ:
-     os.environ["SYNC_API_KEY"] = getpass.getpass("Enter your Sync API Key: ")
+#if "TAVUS_API_KEY" not in os.environ:
+#     os.environ["TAVUS_API_KEY"] = getpass.getpass("Enter your Tavus API Key: ")
+#if "SYNC_API_KEY" not in os.environ:
+#     os.environ["SYNC_API_KEY"] = getpass.getpass("Enter your Sync API Key: ")
 
 # TTS from PlayHT
 def speak(talk):
+     '''
      load_dotenv()
 
      client = Client(
@@ -66,10 +66,10 @@ def speak(talk):
      tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
      # generate speech by cloning a voice using default settings
      tts.tts_to_file(text=talk,
-                     file_path="output3.wav",
+                     file_path="response.wav",
                      speaker_wav=r"Audio_250205024815.wav",
-                     language="en")
-     '''
+                     language = "en")
+     
 
 # Generate video from Tavus API
 def generate_avatar_video(text):
@@ -206,19 +206,17 @@ def create_prompt_template():
     
     return prompt_template
 
-def main_conversation(question):
+def main_conversation():
      db = create_vector_store(data_dir='Fred Sanger Data collection')
      llm = load_llm()
      prompt_template = create_prompt_template()
      retriever = db.as_retriever(search_type="similarity", search_kwargs={'k': 4})
-     '''
      #while True: 
      print("Ask a question? or press enter to end conversation")
      question = input()
           #if not question:
           #     print("Hope to talk to you again sometime.")
           #     break
-     '''
      relevant_docs = retriever.invoke(question)
      context = "\nExtracted documents:\n"
      context += "".join([f"Document {str(i)}:::\n" + str(doc) for i, doc in enumerate(relevant_docs)])
@@ -228,8 +226,9 @@ def main_conversation(question):
      | StrOutputParser()
      )
      answer = chain.invoke(prompt)
-     # print(': ', answer, '\n')
-
+     print(': ', answer, '\n')
+     #speak(answer)
+     '''
      # have idle video running 
      yield answer, gr.update(value="https://drive.google.com/file/d/1let6bXm9EvBJUbHtnMahTvk-KLtSZRMf/view?usp=sharing", autoplay = True)
 
@@ -273,4 +272,9 @@ with gr.Interface(
     title="System Context Conversation Bot with Speaking Avatar",
     description="Interact with the chatbot, and receive a lifelike video response."
 ) as demo:
-     demo.launch(share=True, debug=True)
+     demo.launch(share=True, debug=True)'
+'''
+def main():
+     main_conversation()
+
+main()
