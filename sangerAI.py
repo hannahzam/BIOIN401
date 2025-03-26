@@ -1,4 +1,4 @@
-from nicegui import ui
+from nicegui import ui, run
 import os
 
 import torch
@@ -17,6 +17,7 @@ from langchain_groq import ChatGroq
 from TTS.api import TTS
 
 import re
+import asyncio
 
 # get Groq API Key
 if "GROQ_API_KEY" not in os.environ:
@@ -26,10 +27,12 @@ def speak(talk):
      device = "cuda" if torch.cuda.is_available() else "cpu"
      tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
      # generate speech by cloning a voice using default settings
+     file_name = "response.wav"
      tts.tts_to_file(text=talk,
-                     file_path="response.wav",
+                     file_path=file_name,
                      speaker_wav=r"Audio_250205024815.wav",
                      language = "en")
+     return file_name
      
 def create_vector_store(data_dir):
     '''Create a vector store from PDF files'''
@@ -97,17 +100,19 @@ def main_conversation(question):
 ui.label('SangerAI').classes('text-3xl')
 
 # Taking the user prompt after clicking the button and inputting it into LLM
-def ask():
+async def ask():
      user_input = question.value
      # display relevant images to the user's query based on keyword 
      for fname in os.listdir('images'):
         if (fname[:-4] in user_input):
         # Display Image
             print(fname)
-            ui.image('images/' + fname).classes('w-64')
+            ui.image('images/' + fname)
             break
-     response = main_conversation(user_input)
+     response = await run.cpu_bound(main_conversation, user_input)
+     audio = await run.cpu_bound(speak, response)
      response_label.set_text(response)
+     ui.audio(audio, autoplay=True)
 
 # input box for user question
 question = ui.input(label="Ask me a question.", placeholder= 'Type something...')
