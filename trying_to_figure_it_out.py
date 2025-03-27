@@ -227,7 +227,7 @@ def main_conversation():
      )
      answer = chain.invoke(prompt)
      print(': ', answer, '\n')
-     #speak(answer)
+     speak("Hello. My name is Frederick Sanger, but you can call me Fred. Would you like to chat? Please, feel free to ask me a question.")
      '''
      # have idle video running 
      yield answer, gr.update(value="https://drive.google.com/file/d/1let6bXm9EvBJUbHtnMahTvk-KLtSZRMf/view?usp=sharing", autoplay = True)

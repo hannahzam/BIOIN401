@@ -1,4 +1,5 @@
-from nicegui import ui, run
+from nicegui import ui, run, app
+from fastapi import Request
 import os
 
 import torch
@@ -101,23 +102,42 @@ ui.label('SangerAI').classes('text-3xl')
 
 # Taking the user prompt after clicking the button and inputting it into LLM
 async def ask():
+     ask_button.disable()
      user_input = question.value
      # display relevant images to the user's query based on keyword 
      for fname in os.listdir('images'):
         if (fname[:-4] in user_input):
         # Display Image
             print(fname)
-            ui.image('images/' + fname)
+            image.set_source('images/' + fname)
             break
      response = await run.cpu_bound(main_conversation, user_input)
      audio = await run.cpu_bound(speak, response)
      response_label.set_text(response)
-     ui.audio(audio, autoplay=True)
+     response_audio = ui.audio(audio, autoplay=True).classes('hidden')
+     video.set_source('for lip sync/pseudo_ls.mp4')
+     response_audio.on('ended', lambda _: reset())
+
+def reset():
+     video.set_source('action/action_2.mp4')
+     image.set_source('images/intro.jpg')
+     ask_button.enable()
+
+# video of sanger with supplementary photo beside it 
+with ui.row().classes('w-full items-center justify-center gap-4'):
+     # plays the intro video, only should play once
+     video = ui.video('action/hello.mp4', autoplay=True, loop=True).classes('w-96')
+     intro_audio = ui.audio('intro_audio.wav', autoplay=True).classes('hidden')
+     intro_audio.on('ended', lambda _: video.set_source('action/action_1.mp4'))
+     image = ui.image('images/intro.jpg').style('width: 50%')
 
 # input box for user question
-question = ui.input(label="Ask me a question.", placeholder= 'Type something...')
-# hitting the button sends user query to the LLM
-ui.button("Ask", on_click=ask).classes("col-span-full")
+with ui.row().classes('w-full items-center justify-center'):
+     question = ui.input(label="Ask me a question.", placeholder= 'Type something...').props('clearable') \
+        .props('outlined') \
+        .classes('text-xl w-96')  # Large text and fixed width
+     # hitting the button sends user query to the LLM
+     ask_button = ui.button("Ask", on_click=ask)
 
 # display LLM response 
 with ui.card().classes("col-span-full"):
