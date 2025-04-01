@@ -20,11 +20,16 @@ from TTS.api import TTS
 import re
 import asyncio
 
+import time
+import edge_tts
+
 # get Groq API Key
 if "GROQ_API_KEY" not in os.environ:
      os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
 
-def speak(talk):
+async def speak(talk):
+     start = time.time()
+     '''
      device = "cuda" if torch.cuda.is_available() else "cpu"
      tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
      # generate speech by cloning a voice using default settings
@@ -33,25 +38,48 @@ def speak(talk):
                      file_path=file_name,
                      speaker_wav=r"Audio_250205024815.wav",
                      language = "en")
+     '''
+     file_name = "response.wav"
+     communicate = edge_tts.Communicate(talk, voice="en-GB-RyanNeural")
+     await communicate.save(file_name)
+     end = time.time()
+     print("execution time for tts: ", str(end-start))
      return file_name
-     
-def create_vector_store(data_dir):
-    '''Create a vector store from PDF files'''
-    # define what documents to load
-    loader = DirectoryLoader(path=data_dir, glob="*.pdf", loader_cls=PyPDFLoader)
 
-    # interpret information in the documents
+def cleanup_audio(file_path):
+    try:
+        os.remove(file_path)
+    except Exception as e:
+        print(f"Could not delete audio file: {e}")
+     
+def create_vector_store(data_dir, index_path='vectorstore_index'):
+    '''Create a vector store from PDF files'''
+    start = time.time()
+    loader = DirectoryLoader(path=data_dir, glob="*.pdf", loader_cls=PyPDFLoader)
     documents = loader.load()
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     texts = splitter.split_documents(documents)
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
                                        model_kwargs={'device': 'cpu'})
-    # create the vector store database
     db = FAISS.from_documents(texts, embeddings)
+    db.save_local(index_path)  # ⬅️ Save the index to disk
+    end = time.time()
+    print("Vector store created and saved.")
+    print("execution time for vector database: ", str(end-start))
     return db
+
+def load_or_create_vector_store(data_dir, index_path='vectorstore_index'):
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
+                                       model_kwargs={'device': 'cpu'})
+    if os.path.exists(index_path):
+        print("Loading existing vector store...")
+        return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
+    else:
+        print("Index not found. Creating vector store...")
+        return create_vector_store(data_dir, index_path)
      
 def load_llm():
-
+     start = time.time()
      llm = ChatGroq(
           model="llama-3.3-70b-versatile",
           temperature=0,
@@ -59,6 +87,8 @@ def load_llm():
           timeout=None,
           max_retries=2
      )
+     end = time.time()
+     print("execution time for llm loading: ", str(end-start))
      return llm
 
 def create_prompt_template():
@@ -79,7 +109,7 @@ def create_prompt_template():
     return prompt_template
 
 def main_conversation(question):
-     db = create_vector_store(data_dir='Fred Sanger Data collection')
+     db = load_or_create_vector_store(data_dir='Fred Sanger Data collection')
      llm = load_llm()
      prompt_template = create_prompt_template()
      retriever = db.as_retriever(search_type="similarity", search_kwargs={'k': 4})
@@ -87,12 +117,16 @@ def main_conversation(question):
      context = "\nExtracted documents:\n"
      context += "".join([f"Document {str(i)}:::\n" + str(doc) for i, doc in enumerate(relevant_docs)])
      prompt = prompt_template.invoke({"context": context, "question": question})
+     start = time.time()
      chain = (
      llm
      | StrOutputParser()
      )
      answer = chain.invoke(prompt)
+     end = time.time()
+     print("execution time for llm answer: ", str(end-start))
      return str(answer)
+
 
 
 # Web App Interface via NiceGUI
@@ -103,6 +137,8 @@ ui.label('SangerAI').classes('text-3xl')
 # Taking the user prompt after clicking the button and inputting it into LLM
 async def ask():
      ask_button.disable()
+     video.set_source('action/thinking.mp4')
+     waiting_audio = ui.audio('thinking.mp3', autoplay=True, loop=True).classes('hidden')
      user_input = question.value
      # display relevant images to the user's query based on keyword 
      for fname in os.listdir('images'):
@@ -112,11 +148,12 @@ async def ask():
             image.set_source('images/' + fname)
             break
      response = await run.cpu_bound(main_conversation, user_input)
-     audio = await run.cpu_bound(speak, response)
+     audio = await speak(response)
+     waiting_audio.delete()
      response_label.set_text(response)
      response_audio = ui.audio(audio, autoplay=True).classes('hidden')
      video.set_source('for lip sync/pseudo_ls.mp4')
-     response_audio.on('ended', lambda _: reset())
+     response_audio.on('ended', lambda _: (reset(), cleanup_audio(audio)))
 
 def reset():
      video.set_source('action/action_2.mp4')

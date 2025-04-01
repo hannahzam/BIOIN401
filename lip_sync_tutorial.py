@@ -1,4 +1,4 @@
-from moviepy.editor import VideoFileClip, concatenate_videoclips, vfx
+from moviepy import VideoFileClip, concatenate_videoclips, vfx
 import pronouncing 
 
 def transcribe_to_phonemes(text):
@@ -18,6 +18,8 @@ def transcribe_to_phonemes(text):
 
 text = "hello world"
 phonemes = transcribe_to_phonemes(text)
+print(phonemes)
+'''
 video = []
 
 target_resolution = (1280, 720)  
@@ -35,4 +37,4 @@ final_clip
 
 # Write the result to a file
 final_clip.write_videofile("phonemes/output_video1.mp4", codec = "libx264")
-
+'''
