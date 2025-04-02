@@ -6,6 +6,6 @@ langchain-groq
 transformers
 datasets
 pypdf
-coqui-tts
+edge-tts
 faiss-cpu
 nicegui

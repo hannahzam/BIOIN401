@@ -15,8 +15,6 @@ import os
 
 from langchain_groq import ChatGroq
 
-from TTS.api import TTS
-
 import re
 import asyncio
 
@@ -29,16 +27,6 @@ if "GROQ_API_KEY" not in os.environ:
 
 async def speak(talk):
      start = time.time()
-     '''
-     device = "cuda" if torch.cuda.is_available() else "cpu"
-     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
-     # generate speech by cloning a voice using default settings
-     file_name = "response.wav"
-     tts.tts_to_file(text=talk,
-                     file_path=file_name,
-                     speaker_wav=r"Audio_250205024815.wav",
-                     language = "en")
-     '''
      file_name = "response.wav"
      communicate = edge_tts.Communicate(talk, voice="en-GB-RyanNeural")
      await communicate.save(file_name)
