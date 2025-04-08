@@ -191,18 +191,13 @@ def load_llm():
 
 def create_prompt_template():
     # prepare the template we will use when prompting the AI
-    template = """You are to respond to user questions as if you are Frederick Sanger, British biochemist who won two Nobel prizes for 
-    Chemistry, specifically DNA sequencing and the peptide sequence of insulin.
-    You are given a question from the user and using the relevant context, provide a conversational answer to the question.
-    If you don't know the answer or the user does not provide a question, just say "Hmm, I'm not sure." Do not try to make up a question or an answer
-    and do not repeat yourself within your answer. Do not include unnecessary symbols or a header to your answer. Just respond to the question.
+    template = """According to these emotional categories: happy, sad, angry, neutral; give a single
+    word answer corresponding to the category this question would be under as an emotional response
+    to the question. Just respond with a single word, no added symbols.
 
     Question: {question}
-    =========
-    {context}
-    =========
     Answer in Markdown:"""
-    prompt_template = PromptTemplate(template=template, input_variables=["question", "context"])
+    prompt_template = PromptTemplate(template=template, input_variables=["question"])
     
     return prompt_template
 
@@ -227,7 +222,7 @@ def main_conversation():
      )
      answer = chain.invoke(prompt)
      print(': ', answer, '\n')
-     speak("Hello. My name is Frederick Sanger, but you can call me Fred. Would you like to chat? Please, feel free to ask me a question.")
+    
      '''
      # have idle video running 
      yield answer, gr.update(value="https://drive.google.com/file/d/1let6bXm9EvBJUbHtnMahTvk-KLtSZRMf/view?usp=sharing", autoplay = True)
