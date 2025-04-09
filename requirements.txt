@@ -1,4 +1,3 @@
-torch
 langchain
 langchain-community
 langchain-huggingface
@@ -9,3 +8,4 @@ pypdf
 edge-tts
 faiss-cpu
 nicegui
+python-dotenv

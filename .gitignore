@@ -1,2 +1,3 @@
 venv/
 vectorstore_index/
+.env
