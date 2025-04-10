@@ -247,6 +247,7 @@ def home():
      # About section of the home page
      with ui.column().classes('items-start px-10 py-20 w-full').props('id=about'):
 
+          # About Fred Sanger
           ui.label('About Dr. Frederick Sanger') \
                .classes('text-3xl font-bold text-white reveal')
 
@@ -259,14 +260,51 @@ def home():
                ui.label('- Fred Sanger').classes('text-lg font-bold text-white')
 
           ui.label(
-               'Dr. Fred Sanger was my scientist of choice for the “Dead Scientist Avatar” project. '
-               'He’s a two-time Nobel prize winner in Chemistry for two incredibly important discoveries: '
-               'the amino acid sequence of insulin and the sequencing of DNA.'
+               'He’s a British biochemist and two-time Nobel prize winner in Chemistry for two incredibly important discoveries: '
+               'the amino acid sequence of insulin and the sequencing of DNA. Such discoveries and ' \
+               'developments have laid the groundwork and gold standard for major sequencing accomplishments like the Human Genome project. ' \
+               'His sequencing work included the genomes of a bacterial virus, mitochondria of human cells and ' \
+               'the bacteriophage lambda. A non-profit research institute, the Wellcome Sanger Institute was named after ' \
+               'him and established in 1992 for genomics and genetics research. In 1993, Sanger retired, spending more time ' \
+               'with family and enjoying his hobbies.'
           ).classes('mt-6 text-base text-gray-300 leading-relaxed reveal')
 
+
+          with ui.row().classes('w-full mt-20 items-start justify-between').style('gap: 1rem'):
+
+               # an About Section about...myself 
+               with ui.column().classes('max-w-5xl items-start'):
+                    ui.label('About the Developer') \
+                         .classes('text-3xl font-bold text-white reveal')
+                    
+                    ui.label(
+                         "My name is Hannah Zamora, a 4th year student at the University of Alberta, majoring in Computing Science, minor in " \
+                         "Bioinformatics. Dr. Fred Sanger was my scientist of choice for the “Dead Scientist Avatar” project. I first " \
+                         "learned about him in my BIOIN 301 class and the importance of his discoveries and work interested me and inspired " \
+                         "me to design this project around him." 
+                    ).classes('text-base text-gray-300 leading-relaxed reveal')
+
+                    ui.label(
+                         "It is not a perfect creation, but I learned so much while developing this project. " \
+                         "I am very thankful for this opportunity to work on this project, alongside my fellow students. " \
+                         "I hope to continue to improve upon this project over time in any way possible, but for now " \
+                         "please enjoy what I have currently made."
+                    ).classes('text-base text-gray-300 leading-relaxed reveal')
+
+               # My face...
+               ui.image('me.jpg') \
+                    .classes('rounded-xl shadow-lg object-cover') \
+                    .style('width: 300px; height: auto;')
+                                   
+
      # References section of the home page
-     with ui.column().classes('py-32 items-center').props('id=references'):
-          ui.label('📚 References Section').classes('text-3xl font-bold')
+     with ui.column().classes('items-start px-10 py-20 w-full').props('id=references'):
+          ui.label('References Section').classes('text-3xl font-bold text-white reveal')
+
+          ui.label(
+               'Disclaimer: This is an academic, non-profit project. This was intended for educational purposes only. ' \
+               'I do not own any of the data being used and I give credit to all necessary parties. '
+          ).classes('italic text-lg text-gray-300')
 
 
 # Chat page 
@@ -297,19 +335,17 @@ def chat():
      def reset():
           # reset UI for user to ask another question
           video.set_source('action/action_2.mp4')
-          set_carousel_images(intro_images)
-          response_title.set_text("What would you like to know?")
-          response_label.set_text('')
           ui.run_javascript("document.getElementById('waitingAudio').play()")
           ask_button.enable()
 
      def pre_chat_measures():
           # sets the UI to proper settings after user inputs a question
           ui.run_javascript("document.getElementById('waitingAudio').pause()")
+          response_title.set_text("Let me think...")
+          response_label.set_text('')
           no_message.set_text('')
           ask_button.disable()
           spinner_overlay.visible = True
-          card_content.visible = False
           video.set_source('action/thinking.mp4')
 
      def set_carousel_images(images: list):
@@ -340,10 +376,10 @@ def chat():
      def emotion_detection(question):
           # detect the kind of emotional response SangerAI will display according to the user question
           llm = load_llm()
-          template = """According to these emotional categories: happy, sad, angry, neutral; give a single
-          word answer corresponding to the category this question would be under as an emotional response
-          to the question. Just respond with a single word, no added symbols. If you are unsure, just respond with
-          neutral.
+          template = """According to these emotional categories: happy, sad, angry, neutral; 
+          give a single word answer corresponding to the category this question 
+          would be under as an emotional response to the question. Just respond with a single word, 
+          no added symbols. If you are unsure, just respond with neutral.
 
           Question: {question}
           Answer in Markdown:"""
@@ -372,21 +408,26 @@ def chat():
           for fname in os.listdir('images'):
                if (fname[:-5].lower() in response.lower()):
                     gallery.append('images/'+ fname)
-               # if no relevant images, retrieve images from the random folder
-               else:
-                    pass 
+          # if no relevant images, retrieve images from the random subsection
+          if len(gallery) == 0:
+               for i in range(3):
+                    # only sets 3 random images
+                    rand_image_count = [0, 1, 2, 3, 4, 5, 6, 7]
+                    rand = random.choice(rand_image_count)
+                    gallery.append('images/random'+str(rand)+'.jpg')
+                    rand_image_count.remove(rand)
           set_carousel_images(gallery)
 
      
      with ui.row().classes('top-0 left-0 w-full bg-gray px-8 py-6 items-center justify-between z-50 shadow-sm'):
-        ui.link('←  Back to Home', '/').classes('text-white text-lg font-medium no-underline hover:text-gray-400')
+        ui.link('←   Back to Home', '/').classes('text-white text-lg font-medium no-underline hover:text-gray-400')
      
      with ui.element().classes('flex flex-row gap-3 w-full'): 
           # Left: Image gallery and responses
           with ui.row().classes('w-full justify-center items-start gap-40'):
                with ui.column().classes('w-[700px]'):
                     # Image gallery
-                    intro_images = ['images/intro1.jpg', 'images/intro2.jpg']
+                    intro_images = ['images/intro2.jpg']
                     with ui.carousel(animated=True, arrows=True, navigation=True).classes('w-full h-auto').props('autoplay=10000') as carousel:
                          for src in intro_images:
                               with ui.carousel_slide().classes('w-full flex justify-center items-center p-4 h-auto'):
