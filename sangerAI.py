@@ -1,4 +1,4 @@
-from nicegui import ui, run, app
+from nicegui import ui, run
 from dotenv import load_dotenv
 import os
 
@@ -13,17 +13,11 @@ import os
 
 from langchain_groq import ChatGroq
 
-import asyncio
 import random
 
 import time
 import edge_tts
 import uuid
-
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 
 
 load_dotenv()
@@ -73,7 +67,6 @@ def load_or_create_vector_store(data_dir, index_path='vectorstore_index'):
      
 def load_llm():
      # load LLM via Groq API
-     start = time.time()
      llm = ChatGroq(
           model="llama-3.3-70b-versatile",
           temperature=0,
@@ -81,18 +74,22 @@ def load_llm():
           timeout=None,
           max_retries=2
      )
-     end = time.time()
-     print("execution time for llm loading: ", str(end-start))
      return llm
 
 def create_prompt_template():
     # prompt template for LLM specific responses
-    template = """You are to respond to user questions as if you are Frederick Sanger, British biochemist who won two Nobel prizes for 
-    Chemistry, specifically DNA sequencing and the peptide sequence of insulin. You are knowlegeable in things like biochemistry, DNA, insulin, etc. Your
-    responses should be human-like, as similar to how Frederick Sanger would speak. He doesn't speak too much, but provides good and concise answers.
-    You are given a question from the user and using the relevant context, provide a conversational answer to the question.
-    If you don't know the answer or the user does not provide a question, respond with a reasonable response as best you can. Do not try to make up a question or an answer
-    and do not repeat yourself within your answer. Do not include unnecessary symbols or a header to your answer. Just respond to the question.
+    template = """You are to respond to user questions as if you are Frederick 
+    Sanger, British biochemist who won two Nobel prizes for Chemistry, 
+    specifically DNA sequencing and the peptide sequence of insulin.
+    You are knowlegeable in things like biochemistry, DNA, insulin, etc. 
+    Your responses should be human-like, as similar to how Frederick Sanger 
+    would speak. He doesn't speak too much, but provides good and concise answers.
+    You are given a question from the user and using the relevant context, 
+    provide a conversational answer to the question.If you don't know the answer 
+    or the user does not provide a question, respond with a reasonable response as 
+    best you can. Do not try to make up a question or an answer and do not 
+    repeat yourself within your answer. Do not include unnecessary symbols or a 
+    header to your answer. Just respond to the question.
 
     Question: {question}
     =========
@@ -108,10 +105,13 @@ def main_conversation(question):
      db = load_or_create_vector_store(data_dir='Fred Sanger Data collection')
      llm = load_llm()
      prompt_template = create_prompt_template()
+     start = time.time()
      retriever = db.as_retriever(search_type="similarity", search_kwargs={'k': 4})
      relevant_docs = retriever.invoke(question)
      context = "\nExtracted documents:\n"
      context += "".join([f"Document {str(i)}:::\n" + str(doc) for i, doc in enumerate(relevant_docs)])
+     end = time.time()
+     print("execution time for document retrieval: ", str(end-start))
      prompt = prompt_template.invoke({"context": context, "question": question})
      start = time.time()
      chain = (
@@ -120,7 +120,7 @@ def main_conversation(question):
      )
      answer = chain.invoke(prompt)
      end = time.time()
-     print("execution time for llm answer: ", str(end-start))
+     print("execution time for llm answer gen: ", str(end-start))
      return str(answer)
 
 
@@ -314,13 +314,12 @@ def chat():
      # Taking the user prompt after clicking the button and inputting it into LLM
      async def ask():
           # preparing the UI for answering user input
-          pre_chat_measures()
-          thinking_audio = ui.audio('thinking.mp3', autoplay=True, loop=True).classes('hidden')
           user_input = question.value
           # LLM response and TTS audio file generation
+          #thinking_audio = ui.audio('filler/thinking_bg.mp3', autoplay=True, loop=True).classes('hidden')
           response = await run.cpu_bound(main_conversation, user_input)
           audio_answer = await speak(response)
-          thinking_audio.delete()
+          #thinking_audio.delete()
           image_gallery(response)
           spinner_overlay.visible = False
           card_content.visible = True
@@ -347,6 +346,10 @@ def chat():
           ask_button.disable()
           spinner_overlay.visible = True
           video.set_source('action/thinking.mp4')
+          filler = filler_audio(question.value)
+          filler_words = ui.audio(filler, autoplay=True).classes('hidden')
+          filler_words.on('ended', lambda _: (ask()))
+
 
      def set_carousel_images(images: list):
           # Clear and populate image gallery with new image list
@@ -418,6 +421,36 @@ def chat():
                     rand_image_count.remove(rand)
           set_carousel_images(gallery)
 
+     def filler_audio(question):
+          llm = load_llm()
+          template = """You are provided a question for Dr. Frederick Sanger. Give me an answer to whether
+          the question is reasonable or not. Respond with only the word bad if it is an unreasonable question to
+          ask Frederick Sanger. Otherwise, respond with only the word neutral. Do not include added symbols.
+
+          Question: {question}
+          Answer in Markdown:"""
+          prompt_template = PromptTemplate(template=template, input_variables=["question"])
+          prompt = prompt_template.invoke({"question": question})
+
+          chain = (
+          llm
+          | StrOutputParser()
+          )
+          answer = chain.invoke(prompt)
+          filler = 'filler/'
+          # 6 waiting filler phrases
+          filler_num = [1, 2, 3, 4, 5, 6]
+          bad_num = [1, 2]
+
+          if str(answer) == "bad":
+               file_num = random.choice(bad_num)
+               filler += 'bad' + str(file_num) + '.mp3'
+          else:
+               file_num = random.choice(filler_num)
+               filler += 'waiting_filler' + str(file_num) + '.mp3'
+
+          return filler
+
      
      with ui.row().classes('top-0 left-0 w-full bg-gray px-8 py-6 items-center justify-between z-50 shadow-sm'):
         ui.link('←   Back to Home', '/').classes('text-white text-lg font-medium no-underline hover:text-gray-400')
@@ -451,7 +484,7 @@ def chat():
                with ui.column().classes('w-[400px]'):
                     video = ui.video('action/action_1.mp4', autoplay=True, loop=True).classes('max-h-[700px] rounded shadow')
 
-          waiting_audio = ui.audio('waiting.mp3', autoplay=True, loop=True).props('id=waitingAudio').classes('hidden')
+          waiting_audio = ui.audio('filler/waiting_bg.mp3', autoplay=True, loop=True).props('id=waitingAudio').classes('hidden')
 
      # input box for user question
      with ui.element().classes(
@@ -462,7 +495,7 @@ def chat():
                # user inputs question here
                question = ui.input(placeholder='Ask me a question...').props('outlined dense').props('clearable').classes('flex-1').props('outlined dense dark') \
           .classes('bg-gray-800 text-white rounded-lg')
-               ask_button = ui.button("Ask", on_click=ask)
+               ask_button = ui.button("Ask", on_click=pre_chat_measures)
 
      # bottom padding to scroll past the input
      ui.element().classes('h-32')

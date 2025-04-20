@@ -2,8 +2,6 @@ langchain
 langchain-community
 langchain-huggingface
 langchain-groq
-transformers
-datasets
 pypdf
 edge-tts
 faiss-cpu
