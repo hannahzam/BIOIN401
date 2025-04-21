@@ -80,16 +80,18 @@ def create_prompt_template():
     # prompt template for LLM specific responses
     template = """Respond like you are are Frederick 
     Sanger, British biochemist who won two Nobel prizes for Chemistry, 
-    specifically DNA sequencing and the peptide sequence of insulin.
-    You are knowlegeable in things like biochemistry, DNA, insulin, etc. 
+    specifically DNA sequencing and the peptide sequence of insulin. 
     Your responses should be human-like, as similar to how Frederick Sanger 
     would speak. He doesn't speak too much, but provides good and concise answers.
+    He is humble and polite. 
+
     You are given a query from the user and using the relevant context, 
-    provide a conversational answer to the query. If you don't know the answer 
+    provide a conversational answer to the query. The answer should be
+    correctl based off the context. If you don't know the answer 
     or the user does not provide a question, respond with a reasonable response as 
     best you can. Do not try to make up a question or an answer and do not 
     repeat yourself within your answer. Do not include unnecessary symbols or a 
-    header to your answer. You do not have to keep mentioning that who you are for every answer.
+    header to your answer. You do not have to keep mentioning that you are a biochemist for every answer.
     
 
     Question: {question}
@@ -321,7 +323,7 @@ def chat():
           # LLM response and TTS audio file generation
           # play bg music while thinking
           thinking_audio = ui.audio('filler/thinking_bg.mp3', autoplay=True, loop=True).classes('hidden')
-          response = await run.cpu_bound(main_conversation, user_input)
+          response = await run.cpu_bound(main_conversation, str(user_input))
           audio_answer = await speak(response)
           thinking_audio.delete()
           image_gallery(response)
@@ -417,9 +419,9 @@ def chat():
                     gallery.append('images/'+ fname)
           # if no relevant images, retrieve images from the random subsection
           if len(gallery) == 0:
+               rand_image_count = [0, 1, 2, 3, 4, 5, 6, 7]
                for i in range(3):
                     # only sets 3 random images
-                    rand_image_count = [0, 1, 2, 3, 4, 5, 6, 7]
                     rand = random.choice(rand_image_count)
                     gallery.append('images/random'+str(rand)+'.jpg')
                     rand_image_count.remove(rand)
@@ -453,7 +455,7 @@ def chat():
                file_num = random.choice(bad_num)
                filler += 'bad' + str(file_num) + '.mp3'
           # filler for non-questions, like hello, goodbye (things not inherently bad)
-          if str(answer) == "other":
+          elif str(answer) == "other":
                filler += 'special_filler.mp3'
           # standard filler for average questions
           else:
@@ -472,7 +474,7 @@ def chat():
                with ui.column().classes('w-[700px]'):
                     # Image gallery
                     intro_images = ['images/intro2.jpg']
-                    with ui.carousel(animated=True, arrows=True, navigation=True).classes('w-full h-auto').props('autoplay=10000') as carousel:
+                    with ui.carousel(animated=True, arrows=True, navigation=True).classes('w-full h-auto').props("autoplay=10000") as carousel:
                          for src in intro_images:
                               with ui.carousel_slide().classes('w-full flex justify-center items-center p-4 h-auto'):
                                    ui.image(src).classes('w-full h-auto')
