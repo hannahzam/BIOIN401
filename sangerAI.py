@@ -107,12 +107,14 @@ def main_conversation(question):
      llm = load_llm()
      prompt_template = create_prompt_template()
      start = time.time()
+     # retrieve relevant documents based on the question, assign it as the context
      retriever = db.as_retriever(search_type="similarity", search_kwargs={'k': 4})
      relevant_docs = retriever.invoke(question)
      context = "\nExtracted documents:\n"
      context += "".join([f"Document {str(i)}:::\n" + str(doc) for i, doc in enumerate(relevant_docs)])
      end = time.time()
      print("execution time for document retrieval: ", str(end-start))
+     # prompt supplied with instructions, user query, and retrieved context
      prompt = prompt_template.invoke({"context": context, "question": question})
      start = time.time()
      chain = (
@@ -317,6 +319,7 @@ def chat():
           # preparing the UI for answering user input
           user_input = question.value
           # LLM response and TTS audio file generation
+          # play bg music while thinking
           thinking_audio = ui.audio('filler/thinking_bg.mp3', autoplay=True, loop=True).classes('hidden')
           response = await run.cpu_bound(main_conversation, user_input)
           audio_answer = await speak(response)
@@ -423,6 +426,7 @@ def chat():
           set_carousel_images(gallery)
 
      def filler_audio(question):
+          # play filler audio that's according to the kind of query provided by the user
           llm = load_llm()
           template = """You are provided a query for Dr. Frederick Sanger. Give me an answer to whether
           the query is reasonable in conversation with Fred Sanger or not. Respond with only the word bad if it is an unreasonable thing to
@@ -440,16 +444,18 @@ def chat():
           )
           answer = chain.invoke(prompt)
           filler = 'filler/'
-          # 6 waiting filler phrases
+          # 8 waiting filler phrases
           filler_num = [1, 2, 3, 4, 5, 6, 7, 8]
           bad_num = [1, 2]
 
+          # filler for any rude, bad or offensive remarks to SangerAI
           if str(answer) == "bad":
                file_num = random.choice(bad_num)
                filler += 'bad' + str(file_num) + '.mp3'
-          print(str(answer))
+          # filler for non-questions, like hello, goodbye (things not inherently bad)
           if str(answer) == "other":
                filler += 'special_filler.mp3'
+          # standard filler for average questions
           else:
                file_num = random.choice(filler_num)
                filler += 'waiting_filler' + str(file_num) + '.mp3'
