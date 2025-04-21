@@ -78,18 +78,19 @@ def load_llm():
 
 def create_prompt_template():
     # prompt template for LLM specific responses
-    template = """You are to respond to user questions as if you are Frederick 
+    template = """Respond like you are are Frederick 
     Sanger, British biochemist who won two Nobel prizes for Chemistry, 
     specifically DNA sequencing and the peptide sequence of insulin.
     You are knowlegeable in things like biochemistry, DNA, insulin, etc. 
     Your responses should be human-like, as similar to how Frederick Sanger 
     would speak. He doesn't speak too much, but provides good and concise answers.
-    You are given a question from the user and using the relevant context, 
-    provide a conversational answer to the question.If you don't know the answer 
+    You are given a query from the user and using the relevant context, 
+    provide a conversational answer to the query. If you don't know the answer 
     or the user does not provide a question, respond with a reasonable response as 
     best you can. Do not try to make up a question or an answer and do not 
     repeat yourself within your answer. Do not include unnecessary symbols or a 
-    header to your answer. Just respond to the question.
+    header to your answer. You do not have to keep mentioning that who you are for every answer.
+    
 
     Question: {question}
     =========
@@ -316,10 +317,10 @@ def chat():
           # preparing the UI for answering user input
           user_input = question.value
           # LLM response and TTS audio file generation
-          #thinking_audio = ui.audio('filler/thinking_bg.mp3', autoplay=True, loop=True).classes('hidden')
+          thinking_audio = ui.audio('filler/thinking_bg.mp3', autoplay=True, loop=True).classes('hidden')
           response = await run.cpu_bound(main_conversation, user_input)
           audio_answer = await speak(response)
-          #thinking_audio.delete()
+          thinking_audio.delete()
           image_gallery(response)
           spinner_overlay.visible = False
           card_content.visible = True
@@ -345,7 +346,7 @@ def chat():
           no_message.set_text('')
           ask_button.disable()
           spinner_overlay.visible = True
-          video.set_source('action/thinking.mp4')
+          video.set_source('action/thinking_vid.mp4')
           filler = filler_audio(question.value)
           filler_words = ui.audio(filler, autoplay=True).classes('hidden')
           filler_words.on('ended', lambda _: (ask()))
@@ -423,9 +424,10 @@ def chat():
 
      def filler_audio(question):
           llm = load_llm()
-          template = """You are provided a question for Dr. Frederick Sanger. Give me an answer to whether
-          the question is reasonable or not. Respond with only the word bad if it is an unreasonable question to
-          ask Frederick Sanger. Otherwise, respond with only the word neutral. Do not include added symbols.
+          template = """You are provided a query for Dr. Frederick Sanger. Give me an answer to whether
+          the query is reasonable in conversation with Fred Sanger or not. Respond with only the word bad if it is an unreasonable thing to
+          to talk to Frederick Sanger about. Otherwise, respond with only the word neutral. If the query is not bad and is not a question respond with
+          other. Do not include added symbols.
 
           Question: {question}
           Answer in Markdown:"""
@@ -439,12 +441,15 @@ def chat():
           answer = chain.invoke(prompt)
           filler = 'filler/'
           # 6 waiting filler phrases
-          filler_num = [1, 2, 3, 4, 5, 6]
+          filler_num = [1, 2, 3, 4, 5, 6, 7, 8]
           bad_num = [1, 2]
 
           if str(answer) == "bad":
                file_num = random.choice(bad_num)
                filler += 'bad' + str(file_num) + '.mp3'
+          print(str(answer))
+          if str(answer) == "other":
+               filler += 'special_filler.mp3'
           else:
                file_num = random.choice(filler_num)
                filler += 'waiting_filler' + str(file_num) + '.mp3'
